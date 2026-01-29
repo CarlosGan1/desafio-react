@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Field, reduxForm } from 'redux-form';
 import {
   TextField,
@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useNavigate } from 'react-router-dom';
 import { validate } from '../utils/validate';
 
@@ -63,11 +64,11 @@ const renderTextField = ({ input, label, placeholder, meta: { touched, error }, 
       "& .MuiOutlinedInput-root": {
         width: 400,
         maxWidth: 400,
-        height: 70, 
-        fontSize: '1.1rem', 
+        height: 70,
+        fontSize: '1.1rem',
         "& fieldset": { borderColor: "#cfd8dc" },
       },
-      "& .MuiInputLabel-root": { fontSize: '1rem', fontWeight: 600, width: 400, maxWidth: 400 }
+      "& .MuiInputLabel-root": { fontSize: '1rem', fontWeight: 600 }
     }}
   />
 );
@@ -83,10 +84,10 @@ const renderSelectField = ({ input, label, meta: { touched, error }, children })
       sx={{
         width: 280,
         maxWidth: 280,
-        height: 70, 
+        height: 70,
         fontSize: '1.1rem',
         color: !input.value ? "#b0bec5" : "inherit",
-        "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cfd8dc", width: 280, maxWidth: 280 },
+        "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cfd8dc" },
       }}
     >
       {children}
@@ -101,6 +102,7 @@ let ProdutoForm = ({ handleSubmit }) => {
   const navigate = useNavigate();
 
   const [quantidades, setQuantidades] = useState({});
+  const [carrinho, setCarrinho] = useState({});
   const [produtoAtivo, setProdutoAtivo] = useState(null);
   const [termoBusca, setTermoBusca] = useState('');
 
@@ -109,7 +111,7 @@ let ProdutoForm = ({ handleSubmit }) => {
   );
 
   const totalGeral = listaProdutos.reduce(
-    (acc, p) => acc + p.preco * (quantidades[p.id] || 0),
+    (acc, p) => acc + p.preco * (carrinho[p.id] || 0),
     0
   );
 
@@ -120,8 +122,33 @@ let ProdutoForm = ({ handleSubmit }) => {
     }));
   };
 
-  const adicionarProduto = () => {
-    setProdutoAtivo(null);
+  // Função para ajustar a quantidade DIRETAMENTE no carrinho
+  const ajustarQtdNoCarrinho = (id, delta) => {
+    setCarrinho((prev) => {
+      const novaQtd = (prev[id] || 0) + delta;
+      const novoCarrinho = { ...prev };
+
+      if (novaQtd <= 0) {
+        delete novoCarrinho[id];
+      } else {
+        novoCarrinho[id] = novaQtd;
+      }
+      return novoCarrinho;
+    });
+  };
+
+  const confirmarAdicao = (id) => {
+    const qtdTemporaria = quantidades[id] || 0;
+    if (qtdTemporaria > 0) {
+      setCarrinho((prev) => ({
+        ...prev,
+        [id]: (prev[id] || 0) + qtdTemporaria
+      }));
+      setQuantidades((prev) => ({ ...prev, [id]: 0 }));
+      setProdutoAtivo(null);
+    } else {
+      alert("Selecione uma quantidade primeiro!");
+    }
   };
 
   const aoEnviar = (values) => {
@@ -129,20 +156,26 @@ let ProdutoForm = ({ handleSubmit }) => {
       alert('Selecione pelo menos um produto!');
       return;
     }
-
     localStorage.setItem('clienteNome', values.nome);
     localStorage.setItem('valorTotal', totalGeral);
     navigate('/checkout');
   };
 
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      if (!e.target.closest('[data-card-produto="true"]')) {
+        setProdutoAtivo(null);
+      }
+    };
+    document.addEventListener("click", handleGlobalClick);
+    return () => document.removeEventListener("click", handleGlobalClick);
+  }, []);
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, pb: 15 }}>
       {/* HEADER */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-        <Typography variant="h5" fontWeight={600}>
-          Produtos
-        </Typography>
-
+        <Typography variant="h5" fontWeight={600}>Produtos</Typography>
         <TextField
           size="small"
           placeholder="Pesquisar acessório Apple..."
@@ -155,125 +188,181 @@ let ProdutoForm = ({ handleSubmit }) => {
       <Divider sx={{ mb: 4 }} />
 
       {/* PRODUTOS */}
-      <Grid container spacing={4} justifyContent="center">
-        {produtosFiltrados.map((p) => {
-          const ativo = produtoAtivo === p.id;
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: 'repeat(1, 1fr)',
+            sm: 'repeat(2, 1fr)',
+            md: 'repeat(4, 1fr)'
+          },
+          gap: 3
+        }}
+      >
+        {produtosFiltrados.slice(0, 8).map((p) => {
+          const selecionado = produtoAtivo === p.id;
 
           return (
-            <Grid item xs={12} sm={6} md={3} key={p.id}>
-              <Box
-                onClick={() => setProdutoAtivo(p.id)}
-                sx={{
-                  textAlign: 'center',
-                  p: ativo ? 3 : 1,
-                  borderRadius: 2,
-                  bgcolor: ativo ? '#fff' : 'transparent',
-                  boxShadow: ativo
-                    ? '0 6px 20px rgba(0,0,0,0.12)'
-                    : 'none',
-                  cursor: 'pointer',
-                  transition: '0.3s'
-                }}
-              >
-                <img
-                  src={p.img}
-                  alt={p.nome}
-                  style={{
-                    width: '100%',
-                    maxWidth: ativo ? 180 : 140,
-                    height: 160,
-                    objectFit: 'contain',
-                    marginBottom: 15
-                  }}
-                />
+            <Box
+              key={p.id}
+              data-card-produto="true"
+              onClick={() => setProdutoAtivo(p.id)}
+              sx={{
+                p: 2,
+                // ALTERAÇÃO AQUI:
+                minHeight: 400,      // Garante que todos tenham pelo menos esse tamanho
+                height: 'auto',      // Permite crescer se precisar (quando aparecer os botões)
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between', // Distribui o espaço verticalmente
 
-                <Typography
-                  variant="body2"
-                  sx={{ color: '#607d8b', mb: 1, minHeight: 40 }}
-                >
+                bgcolor: '#fff',
+                borderRadius: '12px',
+                border: selecionado ? '1px solid #e0e0e0' : '1px solid transparent',
+                boxShadow: selecionado ? '0 8px 25px rgba(0,0,0,0.08)' : 'none',
+                position: 'relative',
+                transition: '0.3s',
+                cursor: 'pointer',
+                overflow: 'visible' // Se preferir, use 'hidden', mas com height auto não vai cortar
+              }}
+            >
+              {/* Wrapper do Conteúdo Principal (Empurra o rodapé para baixo) */}
+              <Box sx={{ flex: 1 }}>
+                <Box sx={{ textAlign: 'center', mb: 2 }}>
+                  <img
+                    src={p.img}
+                    alt={p.nome}
+                    style={{ width: '100%', height: 160, objectFit: 'contain' }}
+                  />
+                </Box>
+
+                <Typography sx={{ color: '#455a64', mb: 1, minHeight: 40 }}>
                   {p.nome}
                 </Typography>
 
-                <Typography variant="h6" fontWeight="bold">
+                <Typography variant="h6" fontWeight={800}>
                   {formatarMoeda(p.preco)}
                 </Typography>
 
-                {ativo && (
-                  <>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        mt: 2
-                      }}
-                    >
-                      <IconButton onClick={() => alterarQtd(p.id, -1)}>
-                        <RemoveIcon />
-                      </IconButton>
+                <Typography variant="caption" display="block" sx={{ color: '#90a4ae' }}>
+                  Em até 12x de {formatarMoeda(p.preco / 12)}
+                </Typography>
 
-                      <Box sx={{ mx: 2, fontWeight: 'bold' }}>
-                        {quantidades[p.id] || 0}
-                      </Box>
-
-                      <IconButton onClick={() => alterarQtd(p.id, 1)}>
-                        <AddIcon />
-                      </IconButton>
-                    </Box>
-
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      sx={{
-                        mt: 2,
-                        bgcolor: '#039be5',
-                        '&:hover': { bgcolor: '#0288d1' }
-                      }}
-                      onClick={adicionarProduto}
-                    >
-                      ADICIONAR
-                    </Button>
-                  </>
-                )}
+                <Typography variant="caption" display="block" sx={{ color: '#b0bec5', fontWeight: 600 }}>
+                  {formatarMoeda(p.preco * 0.9)} à vista (10% de desconto)
+                </Typography>
               </Box>
-            </Grid>
+
+              {/* ÁREA DOS BOTÕES (Footer) */}
+              {/* Alterado: Removido position absolute. Adicionado mt: 2 para espaçamento */}
+              {selecionado && (
+                <Box
+                  sx={{
+                    mt: 2, // Margem superior para separar do texto
+                    animation: 'fadeIn 0.3s ease-in', // Opcional: animação suave
+                    '@keyframes fadeIn': {
+                      '0%': { opacity: 0, transform: 'translateY(10px)' },
+                      '100%': { opacity: 1, transform: 'translateY(0)' },
+                    }
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      mb: 1,
+                      border: '1px solid #f0f0f0',
+                      borderRadius: '8px',
+                      p: 0.5
+                    }}
+                  >
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); alterarQtd(p.id, -1); }}>
+                      <RemoveIcon fontSize="small" />
+                    </IconButton>
+
+                    <Typography fontWeight={700} sx={{ alignSelf: 'center' }}>
+                      {quantidades[p.id] || 0}
+                    </Typography>
+
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); alterarQtd(p.id, 1); }}>
+                      <AddIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    sx={{
+                      bgcolor: '#009fe3',
+                      fontWeight: 800,
+                      borderRadius: '8px',
+                      boxShadow: 'none'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      confirmarAdicao(p.id);
+                    }}
+                  >
+                    ADICIONAR
+                  </Button>
+                </Box>
+              )}
+            </Box>
           );
         })}
-      </Grid>
+      </Box>
 
-      {/* TÍTULO COM LINHA MAIS LONGA */}
-      <Box sx={{ mt: 6, mb: 3 }}>
-        <Typography variant="h5" fontWeight={700} sx={{ color: '#455a64' }}>
-          Dados do Cliente
-        </Typography>
+      {Object.keys(carrinho).some(id => carrinho[id] > 0) && (
+        <Box sx={{ mt: 6, p: 3, bgcolor: '#f8f9fa', borderRadius: '12px', border: '1px solid #eceff1' }}>
+          <Typography variant="h6" sx={{ mb: 3, fontWeight: 700, color: '#455a64' }}>Itens no seu carrinho</Typography>
+          {listaProdutos.filter(p => carrinho[p.id] > 0).map(item => (
+            <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, pb: 2, borderBottom: '1px solid #eee' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <img src={item.img} style={{ width: 50, height: 50, objectFit: 'contain' }} alt="" />
+                <Box>
+                  <Typography variant="body1" fontWeight={600}>{item.nome}</Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    {formatarMoeda(item.preco)} cada
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                {/* Controles de Quantidade no Carrinho */}
+                <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid #ddd', borderRadius: '6px', bgcolor: '#fff' }}>
+                  <IconButton size="small" onClick={() => ajustarQtdNoCarrinho(item.id, -1)}>
+                    <RemoveIcon fontSize="small" />
+                  </IconButton>
+                  <Typography sx={{ px: 2, fontWeight: 700 }}>{carrinho[item.id]}</Typography>
+                  <IconButton size="small" onClick={() => ajustarQtdNoCarrinho(item.id, 1)}>
+                    <AddIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+
+                <Typography variant="body1" fontWeight={700} sx={{ minWidth: 100, textAlign: 'right' }}>
+                  {formatarMoeda(item.preco * carrinho[item.id])}
+                </Typography>
+
+                <IconButton color="error" size="small" onClick={() => ajustarQtdNoCarrinho(item.id, -carrinho[item.id])}>
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      )}
+
+      {/* DADOS DO CLIENTE */}
+      <Box sx={{ mt: 8, mb: 3 }}>
+        <Typography variant="h5" fontWeight={700} sx={{ color: '#455a64' }}>Dados do Cliente</Typography>
         <Divider sx={{ mt: 1, mb: 4, borderColor: '#eceff1' }} />
       </Box>
 
       <form onSubmit={handleSubmit(aoEnviar)}>
-        <Grid container spacing={2}>
-
-          {/* Campo Nome: md={5} - Ocupa quase metade da linha */}
-          <Grid item xs={12} md={100}>
-            <Field
-              name="nome"
-              component={renderTextField}
-              label="Nome"
-              placeholder="Nome do cliente aqui"
-            />
-          </Grid>
-
-          {/* Campo Email: md={4.5} */}
-          <Grid item xs={12} md={5.5}>
-            <Field
-              name="email"
-              component={renderTextField}
-              label="Email"
-              placeholder="Digite seu email aqui"
-            />
-          </Grid>
-
-          {/* Campo Sexo: md={2.5} - Fecha a linha com o seletor maior */}
-          <Grid item xs={12} md={5.5}>
+        <Grid container spacing={3}>
+          <Grid item xs={12}><Field name="nome" component={renderTextField} label="Nome" placeholder="Nome do cliente aqui" /></Grid>
+          <Grid item xs={12} md={6}><Field name="email" component={renderTextField} label="Email" placeholder="Digite seu email aqui" /></Grid>
+          <Grid item xs={12} md={6}>
             <Field name="sexo" component={renderSelectField} label="Sexo">
               <MenuItem value="" disabled>Selecione</MenuItem>
               <MenuItem value="masculino">Masculino</MenuItem>
@@ -281,49 +370,39 @@ let ProdutoForm = ({ handleSubmit }) => {
             </Field>
           </Grid>
 
-          {/* BLOCO DO TOTAL E BOTÃO */}
           <Grid
             item
             xs={12}
             sx={{
               display: 'flex',
               justifyContent: 'flex-end',
-              mt: 8,
-              ml: 'auto',
-              marginBottom: -8,
+              width: '100%',
+              mt: 5
             }}
           >
-            <Box sx={{ width: 220 }}>
+            <Box sx={{ textAlign: 'right' }}>
               <Typography
                 sx={{
                   color: '#455a64',
                   fontSize: '1.8rem',
                   fontWeight: 700,
-                  mb: 2,
-                  textAlign: 'center',
-                  letterSpacing: '-0.01em'
+                  mb: 2
                 }}
               >
                 Total: <strong>{formatarMoeda(totalGeral)}</strong>
               </Typography>
 
               <Button
-                fullWidth
                 type="submit"
                 variant="contained"
                 sx={{
                   bgcolor: '#ff9800',
-                  height: 45,
-                  marginLeft: -2,
+                  height: 50,
+                  px: 4,
                   fontSize: '1.1rem',
                   fontWeight: 700,
                   borderRadius: '8px',
-                  boxShadow: 'none',
-                  textTransform: 'uppercase',
-                  '&:hover': {
-                    bgcolor: '#f57c00',
-                    boxShadow: 'none'
-                  }
+                  '&:hover': { bgcolor: '#f57c00' }
                 }}
               >
                 Finalizar compra
@@ -336,9 +415,5 @@ let ProdutoForm = ({ handleSubmit }) => {
   );
 };
 
-ProdutoForm = reduxForm({
-  form: 'produtoForm',
-  validate
-})(ProdutoForm);
-
+ProdutoForm = reduxForm({ form: 'produtoForm', validate })(ProdutoForm);
 export default ProdutoForm;
