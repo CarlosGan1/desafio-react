@@ -7,11 +7,9 @@ const Finalizacao = () => {
   const [dados, setDados] = useState({ nome: '', total: 0 });
 
   useEffect(() => {
-    // 1. Recupera os dados salvos no passo anterior
     const nomeSalvo = localStorage.getItem('clienteNome');
     const totalSalvo = localStorage.getItem('valorTotal');
 
-    // Se não tiver dados (usuário tentou acessar direto), define valores padrão
     setDados({
       nome: nomeSalvo || 'Cliente',
       total: totalSalvo ? parseFloat(totalSalvo) : 0
@@ -19,15 +17,12 @@ const Finalizacao = () => {
   }, []);
 
   const handleNovaCompra = () => {
-    // 2. Limpa o "carrinho" (localStorage) antes de voltar
     localStorage.removeItem('clienteNome');
     localStorage.removeItem('valorTotal');
     
-    // 3. Redireciona para o início
     navigate('/');
   };
 
-  // Função auxiliar para formatar dinheiro (R$)
   const formatarMoeda = (valor) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
