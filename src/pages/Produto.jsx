@@ -32,13 +32,13 @@ import produto08 from '../assets/produto-08.jpeg';
 
 const listaProdutos = [
   { id: 1, nome: 'AirPods Apple Fones de ouvido', preco: 1499, img: produto01 },
-  { id: 2, nome: 'Cabo de Lightning para USB-C (1 m)', preco: 199, img: produto02 },
-  { id: 3, nome: 'Carregador USB-C de 20W da Apple', preco: 199, img: produto03 },
-  { id: 4, nome: 'Adaptador de Energia USB da Apple (5W)', preco: 99, img: produto04 },
-  { id: 5, nome: 'Cabo de Lightning para USB (1 m)', preco: 149, img: produto05 },
-  { id: 6, nome: 'Adaptador de Lightning para 3,5 mm da Apple', preco: 149, img: produto06 },
-  { id: 7, nome: 'Suporte para iPhone MagSafe da Apple', preco: 399, img: produto07 },
-  { id: 8, nome: 'Capa MagSafe para iPhone 13 Pro', preco: 599, img: produto08 }
+  { id: 2, nome: 'Capa MagSafe para iPhone 13 Pro', preco: 299, img: produto02 },
+  { id: 3, nome: 'Apple Pencil', preco: 729, img: produto03 },
+  { id: 4, nome: 'Magic Mouse 2 - Prateado', preco: 549, img: produto04 },
+  { id: 5, nome: 'Caixa prateada de alumínio com pulseira esportiva branca', preco: 2899, img: produto05 },
+  { id: 6, nome: 'Cabo de Lightning para USB (1 m)', preco: 149, img: produto06 },
+  { id: 7, nome: 'Smart Keyboard para iPad Pro 12,9 polegadas - inglês (EUA)', preco: 1099, img: produto07 },
+  { id: 8, nome: 'Carregador USB-C de 20W da Apple', preco: 149, img: produto08 }
 ];
 
 const formatarMoeda = (valor) =>
@@ -386,7 +386,7 @@ let ProdutoForm = ({ handleSubmit }) => {
                   color: '#455a64',
                   fontSize: '1.8rem',
                   fontWeight: 700,
-                  mb: 2
+                  mb: 1
                 }}
               >
                 Total: <strong>{formatarMoeda(totalGeral)}</strong>
@@ -398,9 +398,9 @@ let ProdutoForm = ({ handleSubmit }) => {
                 sx={{
                   bgcolor: '#ff9800',
                   height: 50,
-                  px: 4,
+                  px: 2,
                   fontSize: '1.1rem',
-                  fontWeight: 700,
+                  fontWeight: 600,
                   borderRadius: '8px',
                   '&:hover': { bgcolor: '#f57c00' }
                 }}
